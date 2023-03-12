@@ -8,6 +8,8 @@ Required modules, imported by pypassmgr:
 - cryptography ([github](https://github.com/pyca/cryptography))
 - urwid ([github](https://github.com/urwid/urwid))
 
+I'm not a software developer and I built this tool for personal use.  To make this into a more professional tool, it will need to be installable (with proper dependency handling) using `distutils`.  I may do that in the future, but this has not been a priority because, again, this is mainly for my own use.  If it is of use to anyone else in its current form, the cryptography and interface (urwid) dependencies will have to be installed manually and made importable.
+
 ## Description and Usage
 
 pypassmgr is a simple, command-line password manager.  At the heart of the password manager is a password database file; the security and encryption used are described in the next section.  The password database contains password entries; each entry consists of an unencrypted label, and an encrypted string that can contain passwords and any other information that the user wishes to encrypt (i.e. login usernames, old passwords, bank account numbers, etc.).  A suggested usage is to alias the `pypassmgr.py` executable as `pypass`:
