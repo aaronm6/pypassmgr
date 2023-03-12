@@ -1,6 +1,0 @@
-total 72
-drwxr-xr-x@  5 me  staff   160B Mar 11 18:32 .
-drwxr-xr-x@  3 me  staff    96B Mar 11 18:31 ..
-drwxr-xr-x@ 12 me  staff   384B Mar 11 18:31 .git
--rw-r--r--@  1 me  staff    34K Mar 11 18:31 LICENSE
--rw-r--r--   1 me  staff     0B Mar 11 18:32 test.txt
