@@ -142,7 +142,7 @@ class _aes256cbc:
         return self.plntxt
 
 class ManagerClass:
-    defaultDir = os.path.expanduser("~") + "/.pypassmgr/"
+    defaultDir = os.path.expanduser("~/.pypassmgr/")
     defaultName = defaultDir + '.passwords_db'
     defaultBUfname = defaultDir + ".backup"
     
