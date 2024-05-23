@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os, re, sys, signal
-import base64, json, argparse
+import base64, json, argparse, yaml
 from getpass import getpass
 from pydoc import pipepager as pp
 from subprocess import call
@@ -145,8 +145,11 @@ class ManagerClass:
     defaultDir = os.path.expanduser("~/.pypassmgr/")
     defaultName = defaultDir + '.passwords_db'
     defaultBUfname = defaultDir + ".backup"
+    yaml_cfg_file = defaultDir + ".config.yml"
     
     def __init__(self, db_file_name=None, backup_file_name=None):
+        flag_yaml_exists = True if os.path.isfile(yaml_cfg_file) else False
+        HEREHEREHEREHEREHERE
         if db_file_name is None:
             self.db_file_name = self.defaultName
             self.db_dir_name = self.defaultDir
