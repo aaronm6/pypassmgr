@@ -149,7 +149,25 @@ class ManagerClass:
     
     def __init__(self, db_file_name=None, backup_file_name=None):
         flag_yaml_exists = True if os.path.isfile(yaml_cfg_file) else False
-        HEREHEREHEREHEREHERE
+        
+        if db_file_name is not None:
+            self.db_file_name = db_file_name[0]
+            self.db_dir_name = os.path.dirname(self.db_file_name)
+            if not self.db_dir_name:
+                self.db_dir_name = '.'
+        elif flag_yaml_exists:
+            with open(yaml_cfg_file,'r') as ff:
+                cfg = yaml.safe_load(ff)
+            if 'db_url' in cfg:
+                
+            elif 'db_file' in cfg:
+                HEREHEREHEREHEREHEREHERE
+        """
+        def read_yaml(file_name):
+            with open(file_name, 'r') as ff:
+                inputs_dict = yaml.safe_load(ff)
+            return inputs_dict
+        """
         if db_file_name is None:
             self.db_file_name = self.defaultName
             self.db_dir_name = self.defaultDir
@@ -725,7 +743,6 @@ def main():
     if inptArgs.backup != -1:
         flag_backup = True
         backup_fileName = inptArgs.backup
-    
     Manager = ManagerClass(db_file_name=inptArgs.file, 
         backup_file_name=backup_fileName)
     if inptArgs.flag_create:
