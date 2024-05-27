@@ -142,7 +142,9 @@ class _aes256cbc:
         return self.plntxt
 
 class ManagerClass:
-    defaultDir = os.path.expanduser("~/.pypassmgr/")
+    #defaultDir = os.path.expanduser("~/.pypassmgr/")
+    print("TEMPORARY DATABASE DIRECTORY FOR DEV")
+    defaultDir = os.path.expanduser("~/.pypassmgr_dev/")
     defaultName = defaultDir + '.passwords_db'
     defaultBUfname = defaultDir + ".backup"
     yaml_cfg_file = defaultDir + ".config.yml"
