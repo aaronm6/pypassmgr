@@ -750,6 +750,7 @@ def main():
     Manager = ManagerClass(db_file_name=inptArgs.file, 
         backup_file_name=backup_fileName)
     if inptArgs.flag_create:
+        
         Manager.createKeys()
         Manager.savePWsToFile()
     
