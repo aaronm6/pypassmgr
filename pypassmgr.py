@@ -154,13 +154,13 @@ def ask_file(message, default=''):
     just hit <enter>, expand the '~'.  Return the given default if nothing is entered.
     """
     if default:
-        default_file_label = f'({default_file})'
+        default_file_label = f'({default})'
     else:
         default_file_label = ''
     #default_file = os.path.expanduser(default)
     file_name = input(f"{message} {default_file_label}: ")
     if not file_name:
-        file_name = default_file
+        file_name = default
     return os.path.expanduser(file_name)
 
 class ManagerClass:
@@ -173,6 +173,7 @@ class ManagerClass:
     
     #def __init__(self, db_file_name=None, backup_file_name=None):
     def __init__(self, override_db_default='default'):
+        self.code_version = 'v1.2'
         self.pws = []
         self.privK_bytes     = None
         self.privK           = None
@@ -185,10 +186,11 @@ class ManagerClass:
         self.db_url          = ''
         self.db_file_name    = ''
         self.db_default      = ''
+        self.version         = self.code_version
         f_yaml_exists = True if os.path.isfile(self.yaml_cfg_file) else False
         json_load = None
         if f_yaml_exists:
-            with open(yaml_cfg_file,'r') as ff:
+            with open(self.yaml_cfg_file,'r') as ff:
                 cfg = yaml.safe_load(ff)
             # If only a remote URL is given for the [read-only] database, this is used
             # If only a local filename (including path) is given for the [read-write] database, this is used
@@ -197,6 +199,7 @@ class ManagerClass:
             if all([rr in cfg for rr in required_fields]):
                 self.db_url = cfg['DB_URL']
                 self.db_file_name = cfg['DB_FILENAME']
+                self.db_dir_name = os.path.dirname(self.db_file_name)
                 self.db_default = cfg['DEFAULT']
             else:
                 print("Config file missing information. Please run setup again")
@@ -211,7 +214,7 @@ class ManagerClass:
                     print("Default db is set to 'remote', but the remote URL either doesn't exist")
                     print("or doesn't work. Run setup to fix. Switching to local db.")
                     self.db_default = 'local'
-            if (self.db_default.lower() = 'local') or (override_db_default='local'):
+            if (self.db_default.lower() == 'local') or (override_db_default=='local'):
                 try:
                     self._load_local()
                     #with open(self.db_file_name) as ff:
@@ -235,7 +238,7 @@ class ManagerClass:
                                     default_backend())
             self._getFingerprint()
         """
-        self.
+    
     def _set_vars_from_json(self, jload):
         if jload is None:
             raise ValueError("Database loading failed")
@@ -275,7 +278,7 @@ class ManagerClass:
             default=self.db_url if self.db_url else '')
         
         local_file = ask_file("Enter filename for local password db or enter for default",
-            default=self.db_file_name if self.db_file_name else defaultName)
+            default=self.db_file_name if self.db_file_name else self.defaultName)
         default_db = ask_file("Default db to use ('local'/'remote')",
             default=self.db_default if self.db_default else "local")
         if default_db.lower() not in ('local','remote'):
@@ -286,6 +289,11 @@ class ManagerClass:
             "DEFAULT":default_db}
         with open(self.yaml_cfg_file,'w') as ff:
             yaml.safe_dump(cfg, ff)
+        
+        self.db_url = remote_url
+        self.db_file_name = local_file
+        self.db_dir_name = os.path.dirname(local_file)
+        self.db_default = default_db
         
         print("Setup complete.")
     
@@ -661,7 +669,7 @@ class ManagerClass:
             json.dump(saveStructure, ff, indent=3)
             #json.dump(saveStructure, ff)
         os.chmod(self.db_file_name, 0o600)
-    def backup(self, backup_name):
+    def backup(self):
         """
         Decrypt all keys and spit them into a file that will be 
         decrypted with the following command
@@ -670,6 +678,8 @@ class ManagerClass:
             -d -in <file_in> -out <file_out>
         where "<file_in>" is ~/.pypassman/.backup
         """
+        # ask_file(message, default=''):
+        backup_file_name = ask_file("Enter file for backup", default=self.defaultBUfname)
         #tempPWS = [[iLabel, self._decryptAESkeyiv(iAESkeyiv), iPW] 
         #    for iLabel, iAESkeyiv, iPW in self.pws]
         tempPWS = [[ii[0], self._decryptAESkeyiv(ii[1]), *ii[2:]]
@@ -700,7 +710,7 @@ class ManagerClass:
         aesObj.reset()
         outputStr_enc = \
             aesObj.encrypt_for_backup(outputStr.encode(), self._pw_bytes)
-        backup_file_name = backup_name if backup_name is not None else self.defaultBUfname
+        #backup_file_name = backup_name if backup_name is not None else self.defaultBUfname
         with open(backup_file_name, 'wb') as ff:
             ff.write(outputStr_enc)
         os.chmod(self.backup_file_name, 0o600)
@@ -806,8 +816,7 @@ def parsesomeargs():
             "strings.")
     openSSL_cmd = "openssl enc -aes-256-cbc -md -pbkdf2 -iter 100000 " + \
         "-salt -d -in ~/.pypassmgr/.backup -out <file>"
-    xorGroup.add_argument('--backup', action='store', dest='backup', 
-        nargs='?', default=-1,
+    xorGroup.add_argument('--backup', action='store_true', dest='flag_backup',
         help=word_wrap("Backup all entries to a separate file that can " + \
             "be decrypted with\n{:s}".format(openSSL_cmd),mc=30))
     xorGroup.add_argument('--pw', action='store_true', dest='flag_pwUpdate',
@@ -826,11 +835,12 @@ def main():
     srchString = ' '.join(inptArgs.search_string)
     
     override_db_default = None
-    if args.flag_remote:
+    if inptArgs.flag_remote:
         override_db_default = 'remote'
-    elif args.flag_local:
+    elif inptArgs.flag_local:
         override_db_default = 'local'
-    Manager = ManagerClass(override_default_location=override_db_default)
+    Manager = ManagerClass(override_db_default=override_db_default)
+    #    def __init__(self, override_db_default='default'):
     
     if inptArgs.flag_setup:
         Manager.setup()
@@ -849,7 +859,7 @@ def main():
                 color.BOLD,
                 len(Manager.pws),
                 color.END))
-    elif inptArgs.backup:
+    elif inptArgs.flag_backup:
         Manager.backup()
     elif inptArgs.flag_RSAregen:
         Manager.reset_rsaKeys()
@@ -883,7 +893,7 @@ def main():
         Manager.disp_bottom(N)
     else:
         if srchString:
-            if srchString == '*'
+            if srchString == '*':
                 srchString = ''
             Manager.entry_search(searchString=srchString)
         else:
