@@ -4,6 +4,7 @@
 
 import os, re, sys, signal
 import base64, json, argparse, yaml
+from urllib import request as req
 from getpass import getpass
 from pydoc import pipepager as pp
 from subprocess import call
@@ -143,63 +144,86 @@ class _aes256cbc:
         self.decrypt_cipherBytes()
         return self.plntxt
 
+#pathtothisfile = os.path.split(__file__)[0] + '/'
+#pathtothisfile = os.path.dirname(__file__) + '/'
+pathtothisfile = f'{os.path.dirname(__file__)}/'
+
+def ask_file(message, default=''):
+    """
+    Ask the user for a file (absolute path), provide them with a default if they
+    just hit <enter>, expand the '~'.  Return the given default if nothing is entered.
+    """
+    if default:
+        default_file_label = f'({default_file})'
+    else:
+        default_file_label = ''
+    #default_file = os.path.expanduser(default)
+    file_name = input(f"{message} {default_file_label}: ")
+    if not file_name:
+        file_name = default_file
+    return os.path.expanduser(file_name)
+
 class ManagerClass:
     #defaultDir = os.path.expanduser("~/.pypassmgr/")
     print("TEMPORARY DATABASE DIRECTORY FOR DEV")
     defaultDir = os.path.expanduser("~/.pypassmgr_dev/")
     defaultName = defaultDir + '.passwords_db'
     defaultBUfname = defaultDir + ".backup"
-    yaml_cfg_file = defaultDir + ".config.yml"
+    yaml_cfg_file = pathtothisfile + ".config.yml"
     
-    def __init__(self, db_file_name=None, backup_file_name=None):
-        flag_yaml_exists = True if os.path.isfile(yaml_cfg_file) else False
-        
-        if db_file_name is not None:
-            self.db_file_name = db_file_name[0]
-            self.db_dir_name = os.path.dirname(self.db_file_name)
-            if not self.db_dir_name:
-                self.db_dir_name = '.'
-        elif flag_yaml_exists:
+    #def __init__(self, db_file_name=None, backup_file_name=None):
+    def __init__(self, override_db_default='default'):
+        self.pws = []
+        self.privK_bytes     = None
+        self.privK           = None
+        self.pubK_bytes      = None
+        self.pubK            = None
+        self.file_exist      = False
+        self.RSA_fingerprint = None
+        self.RSA_randomart   = None
+        self.version         = self.code_version
+        self.db_url          = ''
+        self.db_file_name    = ''
+        self.db_default      = ''
+        f_yaml_exists = True if os.path.isfile(self.yaml_cfg_file) else False
+        json_load = None
+        if f_yaml_exists:
             with open(yaml_cfg_file,'r') as ff:
                 cfg = yaml.safe_load(ff)
-            if 'db_url' in cfg:
-                
-            elif 'db_file' in cfg:
-                HEREHEREHEREHEREHEREHERE
+            # If only a remote URL is given for the [read-only] database, this is used
+            # If only a local filename (including path) is given for the [read-write] database, this is used
+            # If both a URL and a local filename are given, the URL is used and the local file is ignored
+            required_fields = ('DB_URL', 'DB_FILENAME', 'DEFAULT')
+            if all([rr in cfg for rr in required_fields]):
+                self.db_url = cfg['DB_URL']
+                self.db_file_name = cfg['DB_FILENAME']
+                self.db_default = cfg['DEFAULT']
+            else:
+                print("Config file missing information. Please run setup again")
+            if os.path.isfile(self.db_file_name):
+                self.file_exist = True
+            if (self.db_default.lower() == 'remote') or (override_db_default=='remote'):
+                try:
+                    self._load_remote()
+                    #with req.urlopen(self.db_url) as resp:
+                    #    json_load = json.load(resp)
+                except:
+                    print("Default db is set to 'remote', but the remote URL either doesn't exist")
+                    print("or doesn't work. Run setup to fix. Switching to local db.")
+                    self.db_default = 'local'
+            if (self.db_default.lower() = 'local') or (override_db_default='local'):
+                try:
+                    self._load_local()
+                    #with open(self.db_file_name) as ff:
+                    #    json_load = json.load(ff)
+                except:
+                    print("Local db failed to load. Run setup again to fix.")
+            if self.db_default.lower() not in ('local','remote'):
+                print("Default db is not defined.  Run setup to fix.")
         """
-        def read_yaml(file_name):
-            with open(file_name, 'r') as ff:
-                inputs_dict = yaml.safe_load(ff)
-            return inputs_dict
-        """
-        if db_file_name is None:
-            self.db_file_name = self.defaultName
-            self.db_dir_name = self.defaultDir
-        else:
-            self.db_file_name = db_file_name[0]
-            self.db_dir_name = os.path.dirname(self.db_file_name)
-            if not self.db_dir_name:
-                self.db_dir_name = '.'
-        if backup_file_name is None:
-            self.backup_file_name = self.defaultBUfname
-            self.backup_dir_name = self.defaultDir
-        else:
-            self.backup_file_name = backup_file_name
-            self.backup_dir_name = os.path.dirname(backup_file_name)
-        self.code_version = 'v1.1'
-        if not os.path.isfile(self.db_file_name):
-            self.pws = []
-            self.privK_bytes     = None
-            self.privK           = None
-            self.pubK_bytes      = None
-            self.pubK            = None
-            self.file_exist      = False
-            self.RSA_fingerprint = None
-            self.RSA_randomart   = None
-            self.version         = self.code_version
-        else:
-            with open(self.db_file_name) as ff:
-                json_load = json.load(ff)
+        if json_load:
+            self._set_vars_from_json(json_load)
+            
             self.pws         = json_load[2]
             self.privK_bytes = json_load[1][0] 
             self.privK       = None # don't decrypt privK ebytes unless needed
@@ -210,7 +234,60 @@ class ManagerClass:
                                     self.pubK_bytes, 
                                     default_backend())
             self._getFingerprint()
-            self.file_exist   = True
+        """
+        self.
+    def _set_vars_from_json(self, jload):
+        if jload is None:
+            raise ValueError("Database loading failed")
+        self.pws         = jload[2]
+        self.privK_bytes = jload[1][0] 
+        self.privK       = None # don't decrypt privK ebytes unless needed
+        self.pubK_bytes  = base64.b64decode(jload[1][1])
+        self.version     = jload[0]
+        del json_load
+        self.pubK        = load_der_public_key(
+                                self.pubK_bytes, 
+                                default_backend())
+        self._getFingerprint()
+    
+    def _load_remote(self):
+        json_load = None
+        #if self.db_default != 'remote':
+        try:
+            with req.urlopen(self.db_url) as resp:
+                json_load = json.load(resp)
+        except:
+            print("Reading remote data base failed.")
+        self._set_vars_from_json(json_load)
+    def _load_local(self):
+        json_load = None
+        #if self.db_dfault != 'local':
+        if self.file_exist:
+            try:
+                with open(self.db_file_name) as ff:
+                    json_load = json.load(ff)
+            except:
+                print("Reading local data base failed.")
+        
+    def setup(self):
+        # ask_file(message, default='')
+        remote_url = ask_file("Enter URL of remote password db or enter for default",
+            default=self.db_url if self.db_url else '')
+        
+        local_file = ask_file("Enter filename for local password db or enter for default",
+            default=self.db_file_name if self.db_file_name else defaultName)
+        default_db = ask_file("Default db to use ('local'/'remote')",
+            default=self.db_default if self.db_default else "local")
+        if default_db.lower() not in ('local','remote'):
+            print("Options are 'local' or 'remote'. Please run setup again")
+        cfg = {
+            "DB_URL": remote_url,
+            "DB_FILENAME": local_file,
+            "DEFAULT":default_db}
+        with open(self.yaml_cfg_file,'w') as ff:
+            yaml.safe_dump(cfg, ff)
+        
+        print("Setup complete.")
     
     def _get_password(self, 
                       message='Password: ', 
@@ -584,7 +661,7 @@ class ManagerClass:
             json.dump(saveStructure, ff, indent=3)
             #json.dump(saveStructure, ff)
         os.chmod(self.db_file_name, 0o600)
-    def backup(self):
+    def backup(self, backup_name):
         """
         Decrypt all keys and spit them into a file that will be 
         decrypted with the following command
@@ -623,11 +700,12 @@ class ManagerClass:
         aesObj.reset()
         outputStr_enc = \
             aesObj.encrypt_for_backup(outputStr.encode(), self._pw_bytes)
-        with open(self.backup_file_name,'wb') as ff:
+        backup_file_name = backup_name if backup_name is not None else self.defaultBUfname
+        with open(backup_file_name, 'wb') as ff:
             ff.write(outputStr_enc)
         os.chmod(self.backup_file_name, 0o600)
         print("Encrypted backup file written to {:s}".format(
-            self.backup_file_name))
+            backup_file_name))
 
 class pw_arg_parser(argparse.ArgumentParser):
     def print_help(self, file=None):
@@ -690,12 +768,19 @@ def parsesomeargs():
     
     parser = pw_arg_parser(description=word_wrap(descriptString), 
         formatter_class=argparse.RawTextHelpFormatter)
+    
     parser.add_argument('search_string', nargs='*', default=[''], 
         help=word_wrap(
             "A search string that will be compared to the entry labels"))
-    parser.add_argument('--file', action='store', nargs=1, type=str, 
-        help=word_wrap("Specify the password-database file to use, " + \
-            "if different from default."))
+    parser.add_argument('--fingerprint', action='store_true', 
+        dest='flag_fing', help="Print the RSA fingerprint and associated randomart")
+    
+    db_loc_xor = parser.add_mutually_exclusive_group(required=False)
+    db_loc_xor.add_argument('-r','--remote', action='store_true', dest='flag_remote',
+        help="Search the remote database on file (if it exists)")
+    db_loc_xor.add_argument('-l','--local', action='store_true', dest='flag_local',
+        help="Search the local database on file (if it exists)")
+    
     xorGroup = parser.add_mutually_exclusive_group(required=False)
     xorGroup.add_argument('-t','--top', action='store', nargs='?', 
         dest='N_top', default=-1, type=int,
@@ -705,9 +790,8 @@ def parsesomeargs():
         dest='N_bot', default=-1, type=int,
         help="Display the last N entries (N = 10 if no number given)", 
         metavar='N')
-    xorGroup.add_argument('-c','--create', action='store_true', 
-        dest='flag_create',
-        help="Create a new password file and RSA key pair.")
+    xorGroup.add_argument('--setup', action='store_true', dest='flag_setup',
+        help="Set up password manager.")
     xorGroup.add_argument('-a','--add', action='store_true', dest='flag_add',
         help="Invoke add mode.")
     xorGroup.add_argument('-e','--edit', action='store_true', 
@@ -727,36 +811,34 @@ def parsesomeargs():
         help=word_wrap("Backup all entries to a separate file that can " + \
             "be decrypted with\n{:s}".format(openSSL_cmd),mc=30))
     xorGroup.add_argument('--pw', action='store_true', dest='flag_pwUpdate',
-        help="Reset password (but keep same RSA keys).")
+        help="Reset [local] password (but keep same RSA keys).")
     xorGroup.add_argument('--rsa', action='store_true', dest='flag_RSAregen',
-        help="Regenerate RSA keypair, and re-encrypt all entries with " + \
+        help="Regenerate [local] RSA keypair, and re-encrypt all entries with " + \
             "the new key")
     xorGroup.add_argument('--aes', action='store_true', dest='flag_AESregen',
-        help="Regenerate the AES key,iv for all entries.")
-    xorGroup.add_argument('--fingerprint', action='store_true', 
-        dest='flag_fing',
-        help="Print the RSA fingerprint and associated randomart")
+        help="Regenerate the AES key,iv for all local entries.")
+    
     args = parser.parse_args()
     return args
 
 def main():
     inptArgs = parsesomeargs()
     srchString = ' '.join(inptArgs.search_string)
-    flag_backup = False
-    backup_fileName = None
-    if inptArgs.backup != -1:
-        flag_backup = True
-        backup_fileName = inptArgs.backup
-    Manager = ManagerClass(db_file_name=inptArgs.file, 
-        backup_file_name=backup_fileName)
-    if inptArgs.flag_create:
-        
-        Manager.createKeys()
-        Manager.savePWsToFile()
     
+    override_db_default = None
+    if args.flag_remote:
+        override_db_default = 'remote'
+    elif args.flag_local:
+        override_db_default = 'local'
+    Manager = ManagerClass(override_default_location=override_db_default)
+    
+    if inptArgs.flag_setup:
+        Manager.setup()
+        if not Manager.file_exist:
+            Manager.createKeys()
+            Manager.savePWsToFile()
     elif inptArgs.flag_all:
         Manager.displayAllLabels()
-    
     elif inptArgs.flag_pwsearch:
         if srchString:
             if srchString == '*':
@@ -767,62 +849,47 @@ def main():
                 color.BOLD,
                 len(Manager.pws),
                 color.END))
-    
-    elif flag_backup:
+    elif inptArgs.backup:
         Manager.backup()
-    
     elif inptArgs.flag_RSAregen:
         Manager.reset_rsaKeys()
         Manager.savePWsToFile()
-    
     elif inptArgs.flag_AESregen:
         Manager.reset_all_aesKeys()
         Manager.savePWsToFile()
-    
     elif inptArgs.flag_pwUpdate:
         Manager.reset_password()
         Manager.savePWsToFile()
-    
-    elif inptArgs.flag_fing:
-        Manager.display_fingerprint()
-    
     elif inptArgs.flag_add:
         Manager.add_entry()
         Manager.savePWsToFile()
-    
     elif inptArgs.flag_edit:
         Manager.edit_entry(searchString=srchString)
         Manager.savePWsToFile()
-    
     elif inptArgs.flag_del:
         Manager.delete_entry(searchString=srchString)
         Manager.savePWsToFile()
-    
     elif inptArgs.N_top != -1:
         if inptArgs.N_top is not None:
             N = inptArgs.N_top
         else:
             N = 10
         Manager.disp_top(N)
-    
     elif inptArgs.N_bot != -1:
         if inptArgs.N_bot is not None:
             N = inptArgs.N_bot
         else:
             N = 10
         Manager.disp_bottom(N)
-    
     else:
         if srchString:
-            if srchString == '*':
+            if srchString == '*'
                 srchString = ''
             Manager.entry_search(searchString=srchString)
         else:
-            print("Password file contains {:s}{:3d}{:s} entries.".format(
-                color.BOLD,
-                len(Manager.pws), 
-                color.END))
-            
+            print(f"Password file contains {color.BOLD}{len(Manager.pws):3d}{color.END} entries.")
+    if inptArgs.flag_fing:
+        Manager.display_fingerprint()
 
 if __name__ == "__main__":
     main()
