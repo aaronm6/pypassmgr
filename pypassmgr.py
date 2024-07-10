@@ -158,7 +158,7 @@ def ask_file(message, default=''):
     else:
         default_file_label = ''
     #default_file = os.path.expanduser(default)
-    file_name = input(f"{message} {default_file_label}: ")
+    file_name = input(f"{message} {default_file_label}:")
     if not file_name:
         file_name = default
     return os.path.expanduser(file_name)
@@ -186,6 +186,7 @@ class ManagerClass:
         self.db_url          = ''
         self.db_file_name    = ''
         self.db_default      = ''
+        self.db_using        = 'none'
         self.version         = self.code_version
         f_yaml_exists = True if os.path.isfile(self.yaml_cfg_file) else False
         json_load = None
@@ -201,24 +202,24 @@ class ManagerClass:
                 self.db_file_name = cfg['DB_FILENAME']
                 self.db_dir_name = os.path.dirname(self.db_file_name)
                 self.db_default = cfg['DEFAULT']
+                self.db_using = self.db_default
+                if override_db_default == 'local':
+                    self.db_using = 'local'
+                elif override_db_default == 'remote':
+                    self.db_using = 'remote'
             else:
                 print("Config file missing information. Please run setup again")
             if os.path.isfile(self.db_file_name):
                 self.file_exist = True
-            if (self.db_default.lower() == 'remote') or (override_db_default=='remote'):
+            if self.db_using == 'remote':
                 try:
                     self._load_remote()
-                    #with req.urlopen(self.db_url) as resp:
-                    #    json_load = json.load(resp)
                 except:
-                    print("Default db is set to 'remote', but the remote URL either doesn't exist")
-                    print("or doesn't work. Run setup to fix. Switching to local db.")
-                    self.db_default = 'local'
-            if (self.db_default.lower() == 'local') or (override_db_default=='local'):
+                    print("Default db is set to 'remote', but the remote URL either doesn't exist " + \
+                        "or doesn't work. Run setup to fix or work with the local db.")
+            elif self.db_using == 'local':
                 try:
                     self._load_local()
-                    #with open(self.db_file_name) as ff:
-                    #    json_load = json.load(ff)
                 except:
                     print("Local db failed to load. Run setup again to fix.")
             if self.db_default.lower() not in ('local','remote'):
@@ -247,7 +248,7 @@ class ManagerClass:
         self.privK       = None # don't decrypt privK ebytes unless needed
         self.pubK_bytes  = base64.b64decode(jload[1][1])
         self.version     = jload[0]
-        del json_load
+        del jload
         self.pubK        = load_der_public_key(
                                 self.pubK_bytes, 
                                 default_backend())
@@ -271,7 +272,7 @@ class ManagerClass:
                     json_load = json.load(ff)
             except:
                 print("Reading local data base failed.")
-        
+        self._set_vars_from_json(json_load)
     def setup(self):
         # ask_file(message, default='')
         remote_url = ask_file("Enter URL of remote password db or enter for default",
@@ -393,6 +394,9 @@ class ManagerClass:
         NOTE: THE RSA KEYS DON'T CHANGE WITH THIS, ONLY THE PASSWORD 
               USED TO ENCRYPT THE PRIVATE KEY!!
         """
+        if self.db_using == "remote":
+            print("Cannot reset password in remote mode.")
+            return None
         self._decrypt_privK(message="Old password: ")
         self._encrypt_privK(message="Enter new password: ",
             message_confirm="Confirm new password: ", confirm=True)
@@ -402,12 +406,15 @@ class ManagerClass:
         Regenerate an RSA key pair, and re-encrypt all the passwords 
         with the new key.
         """
-        tempPWS = [[iLabel, self._decryptAESkeyiv(iKey), iPW] 
-            for iLabel, iKey, iPW in self.pws]
+        if self.db_using == "remote":
+            print("Cannot reset rsa key pair in remote mode.")
+            return None
+        tempPWS = [[iLabel, self._decryptAESkeyiv(iKey), iPW, iTS] 
+            for iLabel, iKey, iPW, iTS in self.pws]
         self.file_exist = False
         self.createKeys()
-        self.pws = [[iLabel, self._encryptAESkeyiv(*iKey), iPW] 
-            for iLabel, iKey, iPW in tempPWS]
+        self.pws = [[iLabel, self._encryptAESkeyiv(*iKey), iPW, iTS] 
+            for iLabel, iKey, iPW, iTS in tempPWS]
     
     def _reset_aesKey(self, idx_pws):
         """
@@ -419,17 +426,22 @@ class ManagerClass:
         if (idx_pws < 0) or (idx_pws >= len(self.pws)):
             raise IndexError("Input 'idx_pws' must have a value that " + \
                 "is a valid index")
-        iLabel, iaesKeyiv_enc, iPW_enc = self.pws[idx_pws]
+        iLabel, iaesKeyiv_enc, iPW_enc, iTS_enc = self.pws[idx_pws]
         aesKey_old, aesIV_old = self._decryptAESkeyiv(iaesKeyiv_enc)
         aesObj = _aes256cbc()
         aesObj.set_keyiv(aesKey_old, aesIV_old)
         iPW_dec = self._decryptText(iPW_enc, aesObj)
+        iTS_dec = self._decryptText(iTS_enc, aesObj)
         aesObj._gen_keyiv_from_urandom()
         iPW_enc_new = self._encryptText(iPW_dec, aesObj)
+        iTS_enc_new = self._encryptText(iTS_dec, aesObj)
         iaesKeyiv_enc_new = self._encryptAESkeyiv(aesObj.aesKey, aesObj.aesIV)
-        self.pws[idx_pws] = [iLabel, iaesKeyiv_enc_new, iPW_enc_new]
+        self.pws[idx_pws] = [iLabel, iaesKeyiv_enc_new, iPW_enc_new, iTS_enc_new]
     
     def reset_all_aesKeys(self):
+        if self.db_using == "remote":
+            print("Cannot regenerate AES keys in remote mode.")
+            return None
         for k in range(len(self.pws)):
             self._reset_aesKey(k)
     
@@ -482,6 +494,9 @@ class ManagerClass:
         No inputs (yet?).  User is directed to an editor, prompted to 
         enter key info, and then pw info.
         """
+        if self.db_using == "remote":
+            print("Cannot add entries in remote mode.")
+            return None
         if not self.file_exist:
             print("Password-manager file does not exist; creating RSA " + \
                 "key pair...")
@@ -503,6 +518,9 @@ class ManagerClass:
         else:
             print("Key text must not be empty.")
     def edit_entry(self, searchString=''):
+        if self.db_using == "remote":
+            print("Cannot edit entries in remote mode.")
+            return None
         if self.file_exist:
             idx_list = []
             entry_list = []
@@ -564,6 +582,9 @@ class ManagerClass:
         call.  A list is shown and the user is asked to select a key to 
         delete.
         """
+        if self.db_using == "remote":
+            print("Cannot delete an entry in remote mode.")
+            return None
         if self.file_exist:
             idx_list = []
             entry_list = []
@@ -660,6 +681,8 @@ class ManagerClass:
         """
         Overwrites pw_manager file with current content.
         """
+        if self.db_using == "remote":
+            return None
         os.makedirs(self.db_dir_name, mode=0o700, exist_ok=True)
         saveStructure = [
             self.code_version,
@@ -784,12 +807,16 @@ def parsesomeargs():
             "A search string that will be compared to the entry labels"))
     parser.add_argument('--fingerprint', action='store_true', 
         dest='flag_fing', help="Print the RSA fingerprint and associated randomart")
+    parser.add_argument('--default', action='store_true', dest='flag_showdefault',
+        help="Print the default database, if one exists")
     
     db_loc_xor = parser.add_mutually_exclusive_group(required=False)
     db_loc_xor.add_argument('-r','--remote', action='store_true', dest='flag_remote',
-        help="Search the remote database on file (if it exists)")
+        help=word_wrap("Search the remote database on file (if it exists). " + \
+            "This overrides the default db location.", mc=70))
     db_loc_xor.add_argument('-l','--local', action='store_true', dest='flag_local',
-        help="Search the local database on file (if it exists)")
+        help=word_wrap("Search the local database on file (if it exists). " + \
+            "This overrides the default db location.", mc=70))
     
     xorGroup = parser.add_mutually_exclusive_group(required=False)
     xorGroup.add_argument('-t','--top', action='store', nargs='?', 
@@ -803,11 +830,11 @@ def parsesomeargs():
     xorGroup.add_argument('--setup', action='store_true', dest='flag_setup',
         help="Set up password manager.")
     xorGroup.add_argument('-a','--add', action='store_true', dest='flag_add',
-        help="Invoke add mode.")
+        help="Add an entry to the db. Only possible for the local db.")
     xorGroup.add_argument('-e','--edit', action='store_true', 
-        dest='flag_edit', help="Invoke edit mode.")
+        dest='flag_edit', help="Edit an entry in the db. Only possible for the local db.")
     xorGroup.add_argument('-d','--delete', action='store_true', 
-        dest='flag_del', help="Invoke delete mode.")
+        dest='flag_del', help="Delete an entry from the db. Only possible for the local db.")
     xorGroup.add_argument('--all', action='store_true', dest='flag_all',
         help="Display all entry labels in the password database")
     xorGroup.add_argument('--pwsearch', action='store_true', 
@@ -818,14 +845,16 @@ def parsesomeargs():
         "-salt -d -in ~/.pypassmgr/.backup -out <file>"
     xorGroup.add_argument('--backup', action='store_true', dest='flag_backup',
         help=word_wrap("Backup all entries to a separate file that can " + \
-            "be decrypted with\n{:s}".format(openSSL_cmd),mc=30))
+            "be decrypted with\n{:s}".format(openSSL_cmd),mc=70))#30))
     xorGroup.add_argument('--pw', action='store_true', dest='flag_pwUpdate',
-        help="Reset [local] password (but keep same RSA keys).")
+        help="Reset password (but keep same RSA keys). Only possible for the local db.")
     xorGroup.add_argument('--rsa', action='store_true', dest='flag_RSAregen',
-        help="Regenerate [local] RSA keypair, and re-encrypt all entries with " + \
-            "the new key")
+        help=word_wrap("Regenerate RSA keypair, and re-encrypt all entries with " + \
+            "the new key.  New RSA key means a password must be selected again (though can " + \
+            "be the same).  Only possible for the local db.",mc=70))
     xorGroup.add_argument('--aes', action='store_true', dest='flag_AESregen',
-        help="Regenerate the AES key,iv for all local entries.")
+        help=word_wrap("Regenerate the AES key,iv for all local entries.  Only possible for the local db.",
+            mc=70))
     
     args = parser.parse_args()
     return args
@@ -897,9 +926,23 @@ def main():
                 srchString = ''
             Manager.entry_search(searchString=srchString)
         else:
-            print(f"Password file contains {color.BOLD}{len(Manager.pws):3d}{color.END} entries.")
+            if Manager.privK_bytes is not None:
+                if not inptArgs.flag_showdefault:
+                    print(f"Password file contains {color.BOLD}{len(Manager.pws):3d}{color.END} entries.")
+            else:
+                print("Selected password manager has not been set up yet.  Please run again with option --setup")
+            if Manager.db_default:
+                if not inptArgs.flag_showdefault:
+                    print(f"Default database is: {Manager.db_default}")
+            else:
+                print("Default database has not been set.  Run with option --setup")
     if inptArgs.flag_fing:
         Manager.display_fingerprint()
+    if inptArgs.flag_showdefault:
+        if Manager.db_default:
+            print(f"Default database is: {Manager.db_default}")
+        else:
+            print("Default database has not been set.  Run with option --setup")
 
 if __name__ == "__main__":
     main()
