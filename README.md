@@ -4,16 +4,13 @@ A text-based password manager, using pyca/cryptography's openssl python bindings
 
 ## Installation
 ```shell
-thisuser:~$ pip install git+https://github.com/aaronm6/pypassmgr.git
+pip install git+https://github.com/aaronm6/pypassmgr.git
 ```
 
-Required modules, imported by pypassmgr:
-
-- Built-in/standard modules (os, re, sys, base64, json, argparse, getpass, pydoc, subprocess)
-- cryptography ([github](https://github.com/pyca/cryptography))
-- urwid ([github](https://github.com/urwid/urwid))
-
-I'm not a software developer and I built this tool for personal use.  To make this into a more professional tool, it will need to be installable (with proper dependency handling) using `distutils`.  I may do that in the future, but this has not been a priority because, again, this is mainly for my own use.  If it is of use to anyone else in its current form, the cryptography and interface (urwid) dependencies will have to be installed manually and made importable.
+Non-standard required modules:
+- cryptography ([github](https://github.com/pyca/cryptography), [pypi](https://pypi.org/project/cryptography/)) v42.0.5 or newer
+- urwid ([github](https://github.com/urwid/urwid), [pypi](https://pypi.org/project/urwid/)) v2.1.2 or older
+- pyrandomart ([github](https://github.com/aaronm6/pyrandomart), [pypi](https://pypi.org/project/pyrandomart/)) v1.1.1 or newer
 
 ## Description and Usage
 
