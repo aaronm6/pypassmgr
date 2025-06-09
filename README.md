@@ -14,11 +14,7 @@ Non-standard required modules:
 
 ## Description and Usage
 
-pypassmgr is a simple, command-line password manager.  At the heart of the password manager is a password database file; the security and encryption used are described in the next section.  The password database contains password entries; each entry consists of an unencrypted label, and an encrypted string that can contain passwords and any other information that the user wishes to encrypt (i.e. login usernames, old passwords, bank account numbers, etc.).  A suggested usage is to alias the `pypassmgr.py` executable as `pypass`:
-
-```shell
-thisuser:~$ alias pypass='pypassmgr/pypassmgr.py'
-```
+pypassmgr is a simple, command-line password manager.  At the heart of the password manager is a password database file; the security and encryption used are described in the next section.  The password database contains password entries; each entry consists of an unencrypted label, and an encrypted string that can contain passwords and any other information that the user wishes to encrypt (i.e. login usernames, old passwords, bank account numbers, etc.).  Installing the package creates two executables: `pypass` (the password manager) and `pw_load_backup` (loads passwords from a text file with a specific syntax into a pypass database file).
 
 The first step in using this tool is to create the database with the `-c` flag, which involves creating the global RSA key pair:  
 
