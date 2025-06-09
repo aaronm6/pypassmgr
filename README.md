@@ -2,6 +2,11 @@
 
 A text-based password manager, using pyca/cryptography's openssl python bindings.
 
+## Installation
+```shell
+thisuser:~$ pip install git+https://github.com/aaronm6/pypassmgr.git
+```
+
 Required modules, imported by pypassmgr:
 
 - Built-in/standard modules (os, re, sys, base64, json, argparse, getpass, pydoc, subprocess)
