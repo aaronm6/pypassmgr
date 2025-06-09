@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 import os, argparse
-from pypassmgr import _aes256cbc, ManagerClass
+from .pw_manager import _aes256cbc, ManagerClass
 from getpass import getpass
 
 def parseArgs():

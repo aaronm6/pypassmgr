@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
-
 import os, re, sys, signal
+import shutil
 import base64, json, argparse
 from getpass import getpass
 from pydoc import pipepager as pp
 from subprocess import call
 from datetime import datetime
-from randomart import randomart
-from urwid_routines import (
+from pyrandomart import randomart
+from .urwid_routines import (
     dual_editor,
     labels_menu,
     display_labels_and_cipher,
@@ -26,7 +25,8 @@ from cryptography.hazmat.primitives.serialization import (
     load_der_public_key
 )
 
-window_cols, window_rows = os.get_terminal_size(0)
+#window_cols, window_rows = os.get_terminal_size(0)
+window_cols, window_rows = shutil.get_terminal_size()
 
 # define a signal handler and register, to capture ctrl-c gracefully
 def signal_handler(sig, frame):
@@ -235,9 +235,9 @@ class ManagerClass:
         fingerprint_bytes = digest.finalize()
         self.RSA_fingerprint = fingerprint_bytes.hex()
         self.RSA_randomart = randomart(fingerprint_bytes, 
-            keyname='RSA 4096', 
-            hashname='SHA256',
-            dims=(35,11))
+            header='RSA 4096', 
+            footer='SHA256',
+            dims=(11,35))
     
     def display_fingerprint(self):
         if self.pubK_bytes is None:

@@ -2,21 +2,19 @@
 
 A text-based password manager, using pyca/cryptography's openssl python bindings.
 
-Required modules, imported by pypassmgr:
+## Installation
+```shell
+pip install git+https://github.com/aaronm6/pypassmgr.git
+```
 
-- Built-in/standard modules (os, re, sys, base64, json, argparse, getpass, pydoc, subprocess)
-- cryptography ([github](https://github.com/pyca/cryptography))
-- urwid ([github](https://github.com/urwid/urwid))
-
-I'm not a software developer and I built this tool for personal use.  To make this into a more professional tool, it will need to be installable (with proper dependency handling) using `distutils`.  I may do that in the future, but this has not been a priority because, again, this is mainly for my own use.  If it is of use to anyone else in its current form, the cryptography and interface (urwid) dependencies will have to be installed manually and made importable.
+Non-standard required modules:
+- cryptography ([github](https://github.com/pyca/cryptography), [pypi](https://pypi.org/project/cryptography/)) v42.0.5 or newer
+- urwid ([github](https://github.com/urwid/urwid), [pypi](https://pypi.org/project/urwid/)) v2.1.2 or older
+- pyrandomart ([github](https://github.com/aaronm6/pyrandomart), [pypi](https://pypi.org/project/pyrandomart/)) v1.1.1 or newer
 
 ## Description and Usage
 
-pypassmgr is a simple, command-line password manager.  At the heart of the password manager is a password database file; the security and encryption used are described in the next section.  The password database contains password entries; each entry consists of an unencrypted label, and an encrypted string that can contain passwords and any other information that the user wishes to encrypt (i.e. login usernames, old passwords, bank account numbers, etc.).  A suggested usage is to alias the `pypassmgr.py` executable as `pypass`:
-
-```shell
-thisuser:~$ alias pypass='pypassmgr/pypassmgr.py'
-```
+pypassmgr is a simple, command-line password manager.  At the heart of the password manager is a password database file; the security and encryption used are described in the next section.  The password database contains password entries; each entry consists of an unencrypted label, and an encrypted string that can contain passwords and any other information that the user wishes to encrypt (i.e. login usernames, old passwords, bank account numbers, etc.).  Installing the package creates two executables: `pypass` (the password manager) and `pw_load_backup` (loads passwords from a text file with a specific syntax into a pypass database file).
 
 The first step in using this tool is to create the database with the `-c` flag, which involves creating the global RSA key pair:  
 
