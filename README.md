@@ -1,6 +1,6 @@
 # pypassmgr
 
-A text-based password manager, using pyca/cryptography's openssl python bindings.
+A text-based password manager, using pyca/cryptography's openssl python bindings. Remote.
 
 ## Installation
 ```shell
