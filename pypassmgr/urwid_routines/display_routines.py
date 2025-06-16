@@ -75,7 +75,7 @@ class my_menu:
         raise urwid.ExitMainLoop()
 
 def labels_menu(labels, user_message='Select Item', 
-    width=60., height=75., min_width=20, min_height=9):
+    width=60, height=75, min_width=20, min_height=9):
     if not hasattr(labels, '__len__'):
         raise TypeError("input 'labels' must be a list-like object")
     if not isinstance(user_message, str):
