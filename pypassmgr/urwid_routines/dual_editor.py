@@ -148,29 +148,31 @@ class editor_columns(urwid.Columns):
             self.focus_position = (self.focus_position + 1) % 2
         else:
             return super(editor_columns, self).keypress(size, key)
-    def _set_focus_position(self, position):
-        for item in self._get_widget_list():
+    @property
+    def focus_position(self):
+        """
+        index of child widget in focus. Raises :exc:`IndexError` if read when
+        Columns is empty, or when set to an invalid index.
+        """
+        return urwid.Columns.focus_position.fget(self)
+    @focus_position.setter
+    def focus_position(self, position):
+        for item in self.widget_list:
             w_line = item.contents[1][0].original_widget
             w_ttl = w_line.title_widget
             orig_title = w_ttl.get_text()
             w_line.__init__(w_line.original_widget, **box_out_of_focus)
             w_ttl = w_line.title_widget
             w_ttl.set_text(orig_title[0])
-        super(editor_columns, self)._set_focus_position(position)
+        urwid.Columns.focus_position.fset(self, position)
         w_line = \
-            self._get_widget_list()[position].contents[1][0].original_widget
+            self.widget_list[position].contents[1][0].original_widget
+            #self._get_widget_list()[position].contents[1][0].original_widget
         w_ttl = w_line.title_widget
         orig_title = w_ttl.get_text()
         w_line.__init__(w_line.original_widget, **box_in_focus)
         w_ttl = w_line.title_widget
         w_ttl.set_text(('reverse',orig_title[0]))
-    def _get_focus_position(self):
-        return super(editor_columns, self)._get_focus_position()
-    focus_position = property(_get_focus_position, _set_focus_position, 
-        doc="""
-        index of child widget in focus. Raises :exc:`IndexError` if read when
-        Columns is empty, or when set to an invalid index.
-        """)
 
 class confirmbox_handler:
     """
@@ -205,8 +207,6 @@ class confirmbox_handler:
                 raise urwid.ExitMainLoop()
             else:
                 self.remove_box()
-            #if key in ('n', 'N'):
-            #    self.remove_box()
     def create_box_and_overlay(self, message='confirm?'):
         confmsg = urwid.Text(message, align='center')
         YNtext = urwid.Text('Y / N', align='center')

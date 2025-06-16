@@ -1,16 +1,21 @@
 [build-system]
-requires = ["setuptools"]
+requires = [
+  "setuptools >= 61.0.0",
+  "setuptools_scm[toml]>=7.0",
+  "wheel",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pypassmgr"
-version = "1.1.0"
 authors = [{name = "Aaron M.", email = "aaronm6@gmail.com"},]
 license = "GPL-3.0"
 readme = "README.md"
 description = "Simple command-line encrypted password/secret manager"
-dependencies = ["cryptography>=42.0.5","urwid<=2.1.2","pyrandomart>=1.1.1"]
+requires-python = ">=3.9.0"
+dependencies = ["cryptography>=42.0.5","urwid>=3.0.2","pyrandomart>=1.1.1"]
 classifiers = ["Programming Language :: Python :: 3",]
+dynamic = ["version"]
 
 [project.urls]
 Repository = "https://github.com/aaronm6/pypassmgr"
@@ -21,3 +26,11 @@ pw_load_backup = "pypassmgr.convertPWfile:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
+platformat=["unix-like"]
+zip-safe = false
+
+[tool.setuptools.dynamic]
+version = {attr = "pypassmgr.__version__"}
+
+[tool.setuptools_scm]
+write_to = "pypassmgr/version.py"

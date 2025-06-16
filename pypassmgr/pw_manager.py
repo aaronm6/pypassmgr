@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.serialization import (
     load_der_private_key,
     load_der_public_key
 )
+from .version import version as __version__
 
 #window_cols, window_rows = os.get_terminal_size(0)
 window_cols, window_rows = shutil.get_terminal_size()
@@ -161,7 +162,7 @@ class ManagerClass:
         else:
             self.backup_file_name = backup_file_name
             self.backup_dir_name = os.path.dirname(backup_file_name)
-        self.code_version = 'v1.1'
+        self.code_version = 'v' + __version__
         if not os.path.isfile(self.db_file_name):
             self.pws = []
             self.privK_bytes     = None
