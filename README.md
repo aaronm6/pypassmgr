@@ -9,7 +9,7 @@ pip install git+https://github.com/aaronm6/pypassmgr.git
 
 Non-standard required modules:
 - cryptography ([github](https://github.com/pyca/cryptography), [pypi](https://pypi.org/project/cryptography/)) v42.0.5 or newer
-- urwid ([github](https://github.com/urwid/urwid), [pypi](https://pypi.org/project/urwid/)) v2.1.2 or older
+- urwid ([github](https://github.com/urwid/urwid), [pypi](https://pypi.org/project/urwid/)) v3.0.2 or newer
 - pyrandomart ([github](https://github.com/aaronm6/pyrandomart), [pypi](https://pypi.org/project/pyrandomart/)) v1.1.1 or newer
 
 ## Description and Usage
