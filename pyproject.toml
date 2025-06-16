@@ -17,7 +17,7 @@ classifiers = ["Programming Language :: Python :: 3",]
 Repository = "https://github.com/aaronm6/pypassmgr"
 
 [project.scripts]
-pypass = "pypassmgr:main"
+pwpass = "pypassmgr:main"
 pw_load_backup = "pypassmgr.convertPWfile:main"
 
 [tool.setuptools]
