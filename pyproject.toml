@@ -26,7 +26,7 @@ pw_load_backup = "pypassmgr.convertPWfile:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
-platform=["unix-like"]
+platforms=["unix-like"]
 zip-safe = false
 
 [tool.setuptools.dynamic]
