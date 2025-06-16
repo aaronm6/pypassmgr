@@ -9,7 +9,8 @@ authors = [{name = "Aaron M.", email = "aaronm6@gmail.com"},]
 license = "GPL-3.0"
 readme = "README.md"
 description = "Simple command-line encrypted password/secret manager"
-dependencies = ["cryptography>=42.0.5","urwid<=2.1.2","pyrandomart>=1.1.1"]
+#dependencies = ["cryptography>=42.0.5","urwid<=2.1.2","pyrandomart>=1.1.1"]
+dependencies = ["cryptography>=42.0.5","urwid>=3.0.2","pyrandomart>=1.1.1"]
 classifiers = ["Programming Language :: Python :: 3",]
 
 [project.urls]
