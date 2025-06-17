@@ -167,7 +167,6 @@ class editor_columns(urwid.Columns):
         urwid.Columns.focus_position.fset(self, position)
         w_line = \
             self.widget_list[position].contents[1][0].original_widget
-            #self._get_widget_list()[position].contents[1][0].original_widget
         w_ttl = w_line.title_widget
         orig_title = w_ttl.get_text()
         w_line.__init__(w_line.original_widget, **box_in_focus)
