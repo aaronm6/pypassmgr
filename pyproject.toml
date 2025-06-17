@@ -1,8 +1,6 @@
 [build-system]
 requires = [
   "setuptools >= 61.0.0",
-  "setuptools_scm[toml]>=7.0",
-  "wheel",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -15,7 +13,7 @@ description = "Simple command-line encrypted password/secret manager"
 requires-python = ">=3.9.0"
 dependencies = ["cryptography>=42.0.5","urwid>=3.0.2","pyrandomart>=1.1.1"]
 classifiers = ["Programming Language :: Python :: 3",]
-dynamic = ["version"]
+version = "1.1.2"
 
 [project.urls]
 Repository = "https://github.com/aaronm6/pypassmgr"
@@ -28,9 +26,3 @@ pw_load_backup = "pypassmgr.convertPWfile:main"
 package-dir = {"" = "."}
 platforms=["unix-like"]
 zip-safe = false
-
-[tool.setuptools.dynamic]
-version = {attr = "pypassmgr.__version__"}
-
-[tool.setuptools_scm]
-write_to = "pypassmgr/version.py"

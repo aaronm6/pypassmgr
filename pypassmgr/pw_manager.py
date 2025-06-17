@@ -1,3 +1,4 @@
+version = "1.1.2"
 import os, re, sys, signal
 import shutil
 import base64, json, argparse
@@ -5,8 +6,12 @@ from getpass import getpass
 from pydoc import pipepager as pp
 from subprocess import call
 from datetime import datetime
-from pyrandomart import randomart
-from .urwid_routines import (
+try:
+    from pyrandomart import randomart
+except ImportError:
+    def randomart(*args, **kwargs):
+        return ''
+from pypassmgr.urwid_routines import (
     dual_editor,
     labels_menu,
     display_labels_and_cipher,
@@ -24,9 +29,7 @@ from cryptography.hazmat.primitives.serialization import (
     load_der_private_key,
     load_der_public_key
 )
-from .version import version as __version__
 
-#window_cols, window_rows = os.get_terminal_size(0)
 window_cols, window_rows = shutil.get_terminal_size()
 
 # define a signal handler and register, to capture ctrl-c gracefully
@@ -162,7 +165,7 @@ class ManagerClass:
         else:
             self.backup_file_name = backup_file_name
             self.backup_dir_name = os.path.dirname(backup_file_name)
-        self.code_version = 'v' + __version__
+        self.code_version = 'v' + version
         if not os.path.isfile(self.db_file_name):
             self.pws = []
             self.privK_bytes     = None
