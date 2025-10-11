@@ -1,20 +1,4 @@
-# pypassmgr : command-line password-encryption manager
-# Copyright (C) 2025, Aaron M. (aaronm6@gmail.com)
-# 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-version = "1.2.1"
+version = "1.1.2"
 import os, re, sys, signal
 import shutil
 import base64, json, argparse
@@ -27,8 +11,7 @@ try:
 except ImportError:
     def randomart(*args, **kwargs):
         return ''
-#from pypassmgr.urwid_routines import (
-from urwid_routines import (
+from pypassmgr.urwid_routines import (
     dual_editor,
     labels_menu,
     display_labels_and_cipher,
@@ -37,7 +20,6 @@ from urwid_routines import (
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import asymmetric, hashes, padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -77,42 +59,6 @@ class color:
     INVERSE    = '\x1B[7m'
     END        = '\033[0m'
 
-"""
-The following dict is new as of v1.2.0.  Prior to that version, all password-based keys were generated in the 
-same way:
-    PBKDF2 with SHA512 and 1e5 iterations
-As PBKDF2 is no longer considered a great key derivation function (KDF), as of 1.2.0 the KDF is upgraded
-to Argon2id (which is currently considered the industry's best, as it provides protection against GPU
-brute-force attacks).
-
-*However* since the --backup option produces a file intended to be decrypted by openssl at the command line,
-we need to use a kdf for backup files that is compatible.  Openssl has supported Argon2id since v3.2 for 
-generic key derivation, but it only supports the use of pbkdf2 when doing an encryption operation.  So Argon2id
-is not really an option for backup files.  Until openssl updates their encryption routine, backup files will use PBKDF2 but with 1e6 iterations instead of 1e5 (the current recommendation in 2025 for PBKDF2 using SHA512 is
-2.2e5 iterations).
-
-Additionally, we want the ability to read pw db files that were created prior to 1.2.0.  So we define a dict
-with various curated KDF options to be used as needed in _aes256cbc._gen_keyiv_from_password
-
-With this keygen_options dict defined, it can be used as (e.g. for 'backup-1.2.0'):
-kdf = keygen_options['backup-1.2.0']['kdffunc'](salt=self.salt, **keygen_options['backup-1.2.0']['opts'])
-where the key 'backup-1.2.0' would be passed to _aes256cbc._gen_keyiv_from_password
-"""
-keygen_options = {
-    'pre-1.2.0': {
-        'kdffunc': PBKDF2HMAC,
-        'opts': {'algorithm':hashes.SHA512(), 'length':48, 'iterations':int(1e5), 'backend':default_backend()}
-    },
-    'backup': {
-        'kdffunc': PBKDF2HMAC,
-        'opts': {'algorithm':hashes.SHA512(), 'length':48, 'iterations':int(1e7), 'backend':default_backend()}
-    },
-    'pwdb_post-1.2.0': {
-        'kdffunc': Argon2id,
-        'opts': {'length':48, 'iterations':6, 'lanes':2, 'memory_cost':24576}
-    },
-}
-
 class _aes256cbc:
     def __init__(self):
         self.reset()
@@ -122,15 +68,15 @@ class _aes256cbc:
         self.aesIV  = None
     def _gen_salt(self, numBytes):
         self.salt = os.urandom(numBytes)
-    def _gen_keyiv_from_password(self, password, keygen_mode='pwdb_post-1.2.0'):
-        """
-        Generate an aes256 key and initialization vector (IV) from a password.
-        """
+    def _gen_keyiv_from_password(self, password):
         assert self.salt is not None, \
             "We must have salt before we can derive a key from a password"
-        assert keygen_mode in keygen_options, "keygen mode must be from available keygen_options keys"
-        
-        kdf = keygen_options[keygen_mode]['kdffunc'](salt=self.salt, **keygen_options[keygen_mode]['opts'])
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA512(),
+            length=48,
+            salt=self.salt,
+            iterations=100000,
+            backend=default_backend())
         kdf_md = kdf.derive(password)
         self.aesKey = kdf_md[:32]
         self.aesIV  = kdf_md[32:]
@@ -168,22 +114,22 @@ class _aes256cbc:
         self.cipherTxt = cipherBytes
     def set_plaintext(self, plaintext):
         self.plntxt = plaintext
-    def encrypt_for_backup(self, plaintext, password, alg='Argon2id'):
+    def encrypt_for_backup(self, plaintext, password):
         self._gen_salt(8)
-        self._gen_keyiv_from_password(password, alg=alg)
+        self._gen_keyiv_from_password(password)
         self.set_plaintext(plaintext)
         self.encrypt_plainBytes()
         outputBytes = b'Salted__' + self.salt + self.cipherTxt
         return outputBytes
-    def decrypt_from_backup(self, ciphertext, password, alg='Argon2id'):
+    def decrypt_from_backup(self, ciphertext, password):
         self.salt = ciphertext[8:16]
         self.set_cipherBytes(ciphertext[16:])
-        self._gen_keyiv_from_password(password, alg=alg)
+        self._gen_keyiv_from_password(password)
         self.decrypt_cipherBytes()
         return self.plntxt
-    def encrypt_for_rsaprivkey(self, plaintext, password, alg='Argon2id'):
+    def encrypt_for_rsaprivkey(self, plaintext, password):
         self._gen_salt(64)
-        self._gen_keyiv_from_password(password, alg='Argon2id')
+        self._gen_keyiv_from_password(password)
         self.set_plaintext(plaintext)
         self.encrypt_plainBytes()
         outputBytes = bytes([len(self.salt)]) + self.salt + self.cipherTxt
@@ -198,24 +144,6 @@ class _aes256cbc:
         self._gen_keyiv_from_password(password)
         self.decrypt_cipherBytes()
         return self.plntxt
-
-def v1_lt_v2(v1, v2):
-    """
-    Takes two version strings (of the form "v1.2.3", with or without the preceding 'v'),
-    and returns True if the first is less than the second; returns False otherwise (i.e.
-    False if the first is equal to or greater than the second).
-    
-    No error checking that the inputs are valid strings.
-    """
-    vers_pattern = r'v?(\d+).(\d+).(\d+)'
-    v1_list = [int(item) for item in re.search(vers_pattern, v1).groups()]
-    v2_list = [int(item) for item in re.search(vers_pattern, v2).groups()]
-    for a, b in zip(v1_list, v2_list):
-        if a < b:
-            return True
-        if a > b:
-            return False
-    return False
 
 class ManagerClass:
     defaultDir = os.path.expanduser("~") + "/.pypassmgr/"
@@ -238,7 +166,6 @@ class ManagerClass:
             self.backup_file_name = backup_file_name
             self.backup_dir_name = os.path.dirname(backup_file_name)
         self.code_version = 'v' + version
-        print(f"Code version: {self.code_version}")
         if not os.path.isfile(self.db_file_name):
             self.pws = []
             self.privK_bytes     = None
@@ -263,7 +190,6 @@ class ManagerClass:
                                     default_backend())
             self._getFingerprint()
             self.file_exist   = True
-            print(f"pwdb file version: {self.version}")
     
     def _get_password(self, 
                       message='Password: ', 
