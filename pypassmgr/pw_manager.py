@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-version = "1.1.2"
+version = "1.1.3"
 import os, re, sys, signal
 import shutil
 import base64, json, argparse
